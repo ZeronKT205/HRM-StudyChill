@@ -11,16 +11,26 @@ let _serviceAccountDrive = null;
 export function getServiceAccountDriveClient() {
   if (_serviceAccountDrive) return _serviceAccountDrive;
 
-  const serviceAccountPath = path.join(process.cwd(), 'service-account-drive.json');
-  
   let serviceAccountKey;
-  try {
-    serviceAccountKey = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-  } catch (err) {
-    throw new Error(
-      `Service account file not found at ${serviceAccountPath}. ` +
-      'Please place service-account-drive.json in the project root.'
-    );
+
+  // 1. Try to read from environment variable first (recommended for Vercel/production)
+  if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    try {
+      serviceAccountKey = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+    } catch (err) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY env variable is not a valid JSON string.');
+    }
+  } else {
+    // 2. Fall back to local file (for local development)
+    const serviceAccountPath = path.join(process.cwd(), 'service-account-drive.json');
+    try {
+      serviceAccountKey = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+    } catch (err) {
+      throw new Error(
+        `Google Service Account credentials not found. ` +
+        `Please set GOOGLE_SERVICE_ACCOUNT_KEY env variable or place service-account-drive.json at ${serviceAccountPath}.`
+      );
+    }
   }
 
   const auth = new google.auth.GoogleAuth({
