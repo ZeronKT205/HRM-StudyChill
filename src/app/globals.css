@@ -434,6 +434,18 @@ input, textarea, select {
   color: #004d80;
 }
 
+.badge-deducted {
+  background: #e8f5e6;
+  color: #1a4a18;
+  border: 1px solid #a8e6a3;
+}
+
+.badge-error {
+  background: #fde8e8;
+  color: #6b1c1c;
+  border: 1px solid #f5c2c2;
+}
+
 .badge-admin {
   background: var(--color-violet);
   color: white;

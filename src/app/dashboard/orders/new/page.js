@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Image,
+  Coins,
 } from 'lucide-react';
 
 export default function NewOrderPage() {
@@ -28,6 +29,8 @@ export default function NewOrderPage() {
     courseDescription: '',
     orderValue: '',
     billImage: '',
+    commissionDeducted: false,
+    isError: false,
   });
   const [selectedFolders, setSelectedFolders] = useState([]);
   const [errors, setErrors] = useState({});
@@ -64,6 +67,19 @@ export default function NewOrderPage() {
   function formatDisplayValue(value) {
     if (!value) return '';
     return Number(value).toLocaleString('vi-VN');
+  }
+
+  function handleFlagChange(e) {
+    const { name, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: checked,
+      // Error orders are always 0đ
+      ...(name === 'isError' ? { orderValue: checked ? '0' : '' } : {}),
+    }));
+    if (name === 'isError' && errors.orderValue) {
+      setErrors(prev => ({ ...prev, orderValue: null }));
+    }
   }
 
   function handleFileUpload(e) {
@@ -119,7 +135,7 @@ export default function NewOrderPage() {
       newErrors.customerEmail = 'Email không hợp lệ';
     }
     if (!formData.courseDescription.trim()) newErrors.courseDescription = 'Vui lòng mô tả khóa học';
-    if (!formData.orderValue || Number(formData.orderValue) <= 0) {
+    if (!formData.isError && (!formData.orderValue || Number(formData.orderValue) <= 0)) {
       newErrors.orderValue = 'Vui lòng nhập giá trị đơn hàng';
     }
     setErrors(newErrors);
@@ -277,12 +293,13 @@ export default function NewOrderPage() {
                         id="orderValue"
                         name="orderValue"
                         className={`form-input ${errors.orderValue ? 'error' : ''}`}
-                        value={isValueFocused ? formData.orderValue : formatDisplayValue(formData.orderValue)}
+                        value={formData.isError ? '0' : (isValueFocused ? formData.orderValue : formatDisplayValue(formData.orderValue))}
                         onChange={handleValueChange}
                         onFocus={() => setIsValueFocused(true)}
                         onBlur={() => setIsValueFocused(false)}
                         placeholder="Nhập số tiền (ví dụ: 12000000)..."
-                        style={{ paddingRight: 50 }}
+                        disabled={formData.isError}
+                        style={{ paddingRight: 50, ...(formData.isError ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
                       />
                       <span style={{
                         position: 'absolute',
@@ -302,6 +319,70 @@ export default function NewOrderPage() {
                       </span>
                     )}
                     {errors.orderValue && <span className="form-error">{errors.orderValue}</span>}
+                  </div>
+
+                  {/* Order Flags */}
+                  <div className="form-group">
+                    <label className="form-label">Tùy chọn xử lý đơn</label>
+                    <div className="flex flex-col gap-3">
+                      <label htmlFor="commissionDeducted" style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 'var(--space-3)',
+                        cursor: 'pointer',
+                        padding: 'var(--space-3)',
+                        border: `1.5px solid ${formData.commissionDeducted ? 'var(--color-herb)' : 'var(--border-light)'}`,
+                        borderRadius: 'var(--border-radius-md)',
+                        background: formData.commissionDeducted ? '#e8f5e6' : 'transparent',
+                      }}>
+                        <input
+                          type="checkbox"
+                          id="commissionDeducted"
+                          name="commissionDeducted"
+                          className="folder-checkbox"
+                          checked={formData.commissionDeducted}
+                          onChange={handleFlagChange}
+                          style={{ marginTop: 2 }}
+                        />
+                        <div>
+                          <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Coins size={14} /> Đã trừ hoa hồng
+                          </span>
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>
+                            Đơn này đã trừ hoa hồng sẵn — sau khi Admin duyệt sẽ tự chuyển sang &quot;Đã trả hoa hồng&quot;, không cần đối soát nữa
+                          </span>
+                        </div>
+                      </label>
+
+                      <label htmlFor="isError" style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 'var(--space-3)',
+                        cursor: 'pointer',
+                        padding: 'var(--space-3)',
+                        border: `1.5px solid ${formData.isError ? 'var(--color-coral)' : 'var(--border-light)'}`,
+                        borderRadius: 'var(--border-radius-md)',
+                        background: formData.isError ? '#fde8e8' : 'transparent',
+                      }}>
+                        <input
+                          type="checkbox"
+                          id="isError"
+                          name="isError"
+                          className="folder-checkbox"
+                          checked={formData.isError}
+                          onChange={handleFlagChange}
+                          style={{ marginTop: 2 }}
+                        />
+                        <div>
+                          <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={14} /> Báo lỗi
+                          </span>
+                          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>
+                            Đơn xử lý lỗi — giá trị đơn sẽ là 0đ, sau khi Admin duyệt sẽ tự chuyển sang &quot;Đã trả hoa hồng&quot;
+                          </span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
 
                   {/* Bill Upload */}

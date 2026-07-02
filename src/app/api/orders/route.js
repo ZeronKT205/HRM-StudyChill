@@ -70,10 +70,10 @@ export async function POST(request) {
     await connectDB();
 
     const body = await request.json();
-    const { ctvName, customerEmail, courseDescription, orderValue, billImage, selectedFolders } = body;
+    const { ctvName, customerEmail, courseDescription, orderValue, billImage, selectedFolders, commissionDeducted, isError } = body;
 
-    // Validation
-    if (!ctvName || !customerEmail || !courseDescription || !orderValue) {
+    // Validation (error orders are forced to 0đ, so no order value required)
+    if (!ctvName || !customerEmail || !courseDescription || (!orderValue && !isError)) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -86,7 +86,9 @@ export async function POST(request) {
       ctvEmail: session.user.email,
       customerEmail,
       courseDescription,
-      orderValue: Number(orderValue),
+      orderValue: isError ? 0 : Number(orderValue),
+      commissionDeducted: !!commissionDeducted,
+      isError: !!isError,
       billImage: billImage || '',
       selectedFolders: selectedFolders || [],
       driveShareStatus: (selectedFolders || []).map(f => ({

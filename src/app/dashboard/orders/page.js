@@ -14,6 +14,7 @@ import {
   Filter,
   FolderOpen,
   Coins,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function OrdersPage() {
@@ -161,6 +162,16 @@ export default function OrdersPage() {
                             <StatusIcon size={12} />
                             {statusInfo.label}
                           </span>
+                          {(order.commissionDeducted || order.isError) && (
+                            <div className="flex gap-1" style={{ marginTop: 4, flexWrap: 'wrap' }}>
+                              {order.commissionDeducted && (
+                                <span className="badge badge-deducted"><Coins size={10} /> Đã trừ HH</span>
+                              )}
+                              {order.isError && (
+                                <span className="badge badge-error"><AlertTriangle size={10} /> Báo lỗi</span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>
                           {formatDate(order.createdAt)}
@@ -234,6 +245,16 @@ export default function OrdersPage() {
                       {formatVND(selectedOrder.orderValue)}
                     </p>
                   </div>
+                  {(selectedOrder.commissionDeducted || selectedOrder.isError) && (
+                    <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                      {selectedOrder.commissionDeducted && (
+                        <span className="badge badge-deducted"><Coins size={12} /> Đã trừ hoa hồng</span>
+                      )}
+                      {selectedOrder.isError && (
+                        <span className="badge badge-error"><AlertTriangle size={12} /> Báo lỗi (0đ)</span>
+                      )}
+                    </div>
+                  )}
                   {selectedOrder.selectedFolders?.length > 0 && (
                     <div>
                       <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>Thư Mục Đã Cấp Quyền</span>

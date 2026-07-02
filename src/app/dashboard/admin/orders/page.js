@@ -14,6 +14,7 @@ import {
   Loader2,
   MessageSquare,
   Coins,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function AdminOrdersPage() {
@@ -176,6 +177,16 @@ export default function AdminOrdersPage() {
                           <span className={`badge ${statusInfo.class}`}>
                             <StatusIcon size={12} /> {statusInfo.label}
                           </span>
+                          {(order.commissionDeducted || order.isError) && (
+                            <div className="flex gap-1" style={{ marginTop: 4, flexWrap: 'wrap' }}>
+                              {order.commissionDeducted && (
+                                <span className="badge badge-deducted"><Coins size={10} /> Đã trừ HH</span>
+                              )}
+                              {order.isError && (
+                                <span className="badge badge-error"><AlertTriangle size={10} /> Báo lỗi</span>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>
                           {formatDate(order.createdAt)}
@@ -257,6 +268,26 @@ export default function AdminOrdersPage() {
                       {formatVND(actionOrder.orderValue)}
                     </p>
                   </div>
+                  {(actionOrder.commissionDeducted || actionOrder.isError) && (
+                    <div style={{
+                      background: actionOrder.isError ? '#fde8e8' : '#e8f5e6',
+                      border: `1.5px solid ${actionOrder.isError ? '#f5c2c2' : '#a8e6a3'}`,
+                      borderRadius: 'var(--border-radius-md)',
+                      padding: 'var(--space-4)',
+                    }}>
+                      <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '20px' }}>{actionOrder.isError ? '⚠️' : '💸'}</span>
+                        <div>
+                          <p style={{ fontWeight: 700, fontSize: 'var(--text-sm)', marginBottom: 4 }}>
+                            {actionOrder.isError ? 'Đơn báo lỗi (0đ)' : 'Đơn đã trừ hoa hồng'}
+                          </p>
+                          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                            Sau khi duyệt và cấp quyền khóa học, đơn này sẽ tự động chuyển sang <strong>&quot;Đã trả hoa hồng&quot;</strong> — không cần đối soát hoa hồng.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="form-group">
                     <label className="form-label">
                       <MessageSquare size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />

@@ -84,6 +84,12 @@ export async function PUT(request, { params }) {
           }
         }
       }
+
+      // Flagged orders (commission already deducted / error) skip payout:
+      // once approved, move straight to 'paid' so they don't show up for reconciliation
+      if (body.status === 'approved' && (order.commissionDeducted || order.isError)) {
+        order.status = 'paid';
+      }
     } else {
       // CTV can only edit their own pending orders
       if (order.ctvEmail !== session.user.email) {
@@ -99,6 +105,10 @@ export async function PUT(request, { params }) {
       if (body.orderValue) order.orderValue = body.orderValue;
       if (body.billImage) order.billImage = body.billImage;
       if (body.selectedFolders) order.selectedFolders = body.selectedFolders;
+      if (body.commissionDeducted !== undefined) order.commissionDeducted = !!body.commissionDeducted;
+      if (body.isError !== undefined) order.isError = !!body.isError;
+      // Error orders are always 0đ
+      if (order.isError) order.orderValue = 0;
     }
 
     await order.save();

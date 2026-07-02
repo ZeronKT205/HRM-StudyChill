@@ -56,6 +56,16 @@ const OrderSchema = new mongoose.Schema({
     enum: ['pending', 'approved', 'rejected', 'paid'],
     default: 'pending',
   },
+  // Đã trừ hoa hồng: skip payout — auto-move to 'paid' upon approval
+  commissionDeducted: {
+    type: Boolean,
+    default: false,
+  },
+  // Báo lỗi: order value forced to 0đ — auto-move to 'paid' upon approval
+  isError: {
+    type: Boolean,
+    default: false,
+  },
   adminNote: {
     type: String,
     default: '',
