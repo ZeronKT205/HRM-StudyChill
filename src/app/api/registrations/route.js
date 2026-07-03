@@ -134,11 +134,22 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const status = searchParams.get('status');
     const paymentStatus = searchParams.get('paymentStatus');
+    const bucket = searchParams.get('bucket'); // workflow-oriented filter
     const skip = (page - 1) * limit;
 
     const query = {};
     if (status && status !== 'all') query.status = status;
     if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
+
+    // High-level workflow buckets used by the admin page filters.
+    if (bucket === 'pending') {
+      query.paymentStatus = 'pending';
+    } else if (bucket === 'needs_processing') {
+      query.paymentStatus = 'paid';
+      query.processed = false;
+    } else if (bucket === 'approved') {
+      query.processed = true;
+    }
 
     const [registrations, total] = await Promise.all([
       Registration.find(query)

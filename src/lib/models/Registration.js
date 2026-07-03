@@ -78,6 +78,25 @@ const RegistrationSchema = new mongoose.Schema({
   receivedEmailSent: { type: Boolean, default: false },
   confirmEmailSent: { type: Boolean, default: false },
 
+  // ===== Admin processing (duyệt khóa học) =====
+  // processed = admin has granted Drive access and created the corresponding Order.
+  processed: { type: Boolean, default: false, index: true },
+  processedAt: { type: Date, default: null },
+  approvedBy: { type: String, default: '' }, // admin email who approved
+  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', default: null },
+  // Folders granted to the student (mirrors Order.selectedFolders).
+  selectedFolders: [{
+    folderId: { type: String },
+    folderName: { type: String },
+    folderPath: { type: String, default: '' },
+  }],
+  driveShareStatus: [{
+    folderId: { type: String },
+    folderName: { type: String, default: '' },
+    status: { type: String, enum: ['pending', 'success', 'failed'], default: 'pending' },
+    error: { type: String, default: '' },
+  }],
+
   // ===== Admin workflow status =====
   status: {
     type: String,
@@ -90,5 +109,6 @@ const RegistrationSchema = new mongoose.Schema({
 
 RegistrationSchema.index({ status: 1, createdAt: -1 });
 RegistrationSchema.index({ paymentStatus: 1, createdAt: -1 });
+RegistrationSchema.index({ paymentStatus: 1, processed: 1 });
 
 export default mongoose.models.Registration || mongoose.model('Registration', RegistrationSchema);

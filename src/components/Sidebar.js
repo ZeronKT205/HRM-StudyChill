@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -20,6 +21,37 @@ export default function Sidebar({ isOpen, onClose }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const isAdmin = session?.user?.role === 'admin';
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Poll the number of registrations that need processing (admin only) so the
+  // red badge stays fresh. Also refresh on navigation and on the custom event
+  // dispatched right after a registration is approved/deleted.
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    let alive = true;
+    async function fetchPending() {
+      try {
+        const res = await fetch('/api/registrations/pending-count', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (alive) setPendingCount(data.count || 0);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    fetchPending();
+    const interval = setInterval(fetchPending, 30000);
+    const onChanged = () => fetchPending();
+    window.addEventListener('registrations:changed', onChanged);
+
+    return () => {
+      alive = false;
+      clearInterval(interval);
+      window.removeEventListener('registrations:changed', onChanged);
+    };
+  }, [isAdmin, pathname]);
 
   const navItems = [
     {
@@ -40,7 +72,7 @@ export default function Sidebar({ isOpen, onClose }) {
       items: [
         { href: '/dashboard/admin', icon: Shield, label: 'Admin Panel' },
         { href: '/dashboard/admin/orders', icon: ClipboardList, label: 'Tất cả đơn hàng' },
-        { href: '/dashboard/admin/registrations', icon: GraduationCap, label: 'Đăng ký khóa học' },
+        { href: '/dashboard/admin/registrations', icon: GraduationCap, label: 'Đăng ký khóa học', badge: 'registrations' },
         { href: '/dashboard/admin/users', icon: Users, label: 'Quản lý CTV' },
       ],
     });
@@ -74,6 +106,7 @@ export default function Sidebar({ isOpen, onClose }) {
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
+                const badgeCount = item.badge === 'registrations' ? pendingCount : 0;
                 return (
                   <Link
                     key={item.href}
@@ -84,7 +117,33 @@ export default function Sidebar({ isOpen, onClose }) {
                   >
                     <Icon size={20} />
                     <span>{item.label}</span>
-                    {isActive && <ChevronRight size={14} style={{ marginLeft: 'auto', opacity: 0.5 }} />}
+                    {badgeCount > 0 && (
+                      <span
+                        title={`${badgeCount} đơn cần xử lý`}
+                        style={{
+                          marginLeft: 'auto',
+                          background: '#e53935',
+                          color: 'white',
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          fontFamily: 'var(--font-display)',
+                          minWidth: 20,
+                          height: 20,
+                          padding: '0 6px',
+                          borderRadius: 999,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1,
+                          boxShadow: '0 0 0 2px rgba(229,57,53,0.25)',
+                        }}
+                      >
+                        {badgeCount > 99 ? '99+' : badgeCount}
+                      </span>
+                    )}
+                    {isActive && (
+                      <ChevronRight size={14} style={{ marginLeft: badgeCount > 0 ? 6 : 'auto', opacity: 0.5 }} />
+                    )}
                   </Link>
                 );
               })}

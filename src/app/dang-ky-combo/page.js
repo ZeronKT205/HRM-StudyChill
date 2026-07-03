@@ -14,7 +14,21 @@ import {
   Mail,
   MessageSquare,
   AlertTriangle,
+  BookOpen,
+  ExternalLink,
+  Megaphone,
+  MessageCircle,
+  UsersRound,
 } from 'lucide-react';
+
+// External resources shown on the public page.
+const COURSE_SHEET_URL =
+  'https://docs.google.com/spreadsheets/d/1ELtsqjpKLf3ICb116NAe6ACuIIKJmz2R/edit?gid=321020953#gid=321020953';
+const COMMUNITY_LINKS = [
+  { label: 'Fanpage', href: 'https://www.facebook.com/Tailieuonthi3107', icon: Megaphone, accent: 'sky' },
+  { label: 'Nhóm hỗ trợ', href: 'https://zalo.me/g/vf4uews1xb94fhk8clsm', icon: MessageCircle, accent: 'radiate' },
+  { label: 'Cộng đồng học tập', href: 'https://zalo.me/g/rhosxn640', icon: UsersRound, accent: 'violet' },
+];
 
 export default function DangKyComboPage() {
   const router = useRouter();
@@ -131,6 +145,18 @@ export default function DangKyComboPage() {
           <p style={{ fontSize: 'var(--text-lg)', opacity: 0.92, maxWidth: 560, margin: '0 auto' }}>
             Chọn gói khóa học phù hợp với bạn — đầy đủ môn học, giáo viên và tài liệu luyện thi. Đăng ký chỉ trong 1 phút.
           </p>
+
+          <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 'var(--space-3)', marginTop: 'var(--space-6)' }}>
+            <a
+              href={COURSE_SHEET_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-accent btn-lg"
+              id="view-courses-btn"
+            >
+              <BookOpen size={20} /> VIEW KHÓA HỌC <ExternalLink size={16} style={{ opacity: 0.85 }} />
+            </a>
+          </div>
         </div>
       </header>
 
@@ -246,6 +272,48 @@ export default function DangKyComboPage() {
         <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginTop: 'var(--space-10)' }}>
           Cần tư vấn thêm? Hãy để lại thông tin khi đăng ký, đội ngũ StudyChill sẽ liên hệ bạn sớm nhất.
         </p>
+
+        {/* ===== COMMUNITY LINKS ===== */}
+        <div style={{ marginTop: 'var(--space-8)' }}>
+          <h2 style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-xl)', marginBottom: 'var(--space-5)' }}>
+            Kết nối với STUDYCHILL
+          </h2>
+          <div className="community-grid">
+            {COMMUNITY_LINKS.map((link) => {
+              const accent = ACCENT_COLORS[link.accent] || ACCENT_COLORS.herb;
+              const Icon = link.icon;
+              return (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="card community-card"
+                  style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', textDecoration: 'none' }}
+                >
+                  <span
+                    style={{
+                      width: 44,
+                      height: 44,
+                      flexShrink: 0,
+                      borderRadius: 'var(--border-radius-md)',
+                      border: '2px solid var(--border-dark)',
+                      background: accent.bg,
+                      color: accent.fg,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon size={22} />
+                  </span>
+                  <span style={{ flex: 1, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{link.label}</span>
+                  <ExternalLink size={16} style={{ color: 'var(--text-muted)' }} />
+                </a>
+              );
+            })}
+          </div>
+        </div>
       </main>
 
       {/* ===== REGISTER MODAL ===== */}
@@ -406,6 +474,13 @@ export default function DangKyComboPage() {
           .combo-grid {
             grid-template-columns: 1fr;
           }
+        }
+        .community-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: var(--space-4);
+          max-width: 900px;
+          margin: 0 auto;
         }
       `}</style>
     </div>
