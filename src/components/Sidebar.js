@@ -13,6 +13,7 @@ import {
   Users,
   LogOut,
   ChevronRight,
+  GraduationCap,
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -39,6 +40,7 @@ export default function Sidebar({ isOpen, onClose }) {
       items: [
         { href: '/dashboard/admin', icon: Shield, label: 'Admin Panel' },
         { href: '/dashboard/admin/orders', icon: ClipboardList, label: 'Tất cả đơn hàng' },
+        { href: '/dashboard/admin/registrations', icon: GraduationCap, label: 'Đăng ký khóa học' },
         { href: '/dashboard/admin/users', icon: Users, label: 'Quản lý CTV' },
       ],
     });

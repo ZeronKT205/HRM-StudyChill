@@ -69,3 +69,69 @@ export async function sendApprovalEmail(toEmail, courseDescription, selectedFold
 
   return transporter.sendMail(mailOptions);
 }
+
+// Shared branded email shell.
+function emailShell(innerHtml) {
+  return `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #2a3114; border-radius: 12px; background-color: #fff8eb; box-shadow: 4px 4px 0px #2a3114;">
+      <div style="text-align: center; border-bottom: 2px solid #2a3114; padding-bottom: 15px; margin-bottom: 20px;">
+        <h1 style="color: #2a3114; margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px;">STUDYCHILL</h1>
+        <p style="color: #5a6340; margin: 5px 0 0 0; font-size: 14px;">Hệ thống học tập và cung cấp tài liệu tự động</p>
+      </div>
+      <div style="font-size: 16px; color: #2a3114; line-height: 1.6;">
+        ${innerHtml}
+      </div>
+      <div style="text-align: center; margin-top: 30px; padding-top: 15px; border-top: 1px solid #d4ceb8; font-size: 12px; color: #8a9170;">
+        <p>Cảm ơn bạn đã lựa chọn học tập cùng STUDYCHILL!</p>
+        <p style="margin-top: 5px;">&copy; ${new Date().getFullYear()} STUDYCHILL. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Step 1 email — sent right after a student submits the registration form, to
+ * confirm the email address is correct before showing the QR payment screen.
+ */
+export async function sendRegistrationReceivedEmail(toEmail, comboName) {
+  const mailOptions = {
+    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
+    to: toEmail,
+    subject: '[STUDYCHILL] Đã tiếp nhận đăng ký của bạn 📩',
+    html: emailShell(`
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>Chúng tôi vừa tiếp nhận đơn hàng của bạn. Cảm ơn bạn đã tham khảo khóa học <strong>STUDYCHILL</strong>, chúc bạn học tốt!</p>
+      ${comboName ? `<div style="background-color: #ffffff; padding: 15px; border: 2px solid #d4ceb8; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; color: #5a6340; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700;">Gói bạn đã chọn</p>
+        <p style="margin: 6px 0 0 0; font-weight: 700; color: #6a8042;">${comboName}</p>
+      </div>` : ''}
+      <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
+        Vui lòng hoàn tất thanh toán trên màn hình QR để chúng tôi xử lý đăng ký của bạn.
+      </div>
+    `),
+  };
+  return transporter.sendMail(mailOptions);
+}
+
+/**
+ * Step 2 email — sent after the SePay webhook confirms payment succeeded.
+ */
+export async function sendRegistrationConfirmedEmail(toEmail, comboName) {
+  const mailOptions = {
+    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
+    to: toEmail,
+    subject: '[STUDYCHILL] Xác nhận đăng ký khóa học thành công 🎉',
+    html: emailShell(`
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>Xác nhận đăng ký khóa học tại <strong>STUDYCHILL</strong> thành công! 🎉</p>
+      ${comboName ? `<div style="background-color: #ffffff; padding: 15px; border: 2px solid #d4ceb8; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; color: #5a6340; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700;">Gói đã đăng ký</p>
+        <p style="margin: 6px 0 0 0; font-weight: 700; color: #6a8042;">${comboName}</p>
+      </div>` : ''}
+      <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
+        Vui lòng chờ team duyệt và cấp quyền vào khóa học trong tối đa <strong>1 giờ</strong>. Chúng tôi sẽ gửi email khi khóa học được kích hoạt.
+      </div>
+    `),
+  };
+  return transporter.sendMail(mailOptions);
+}
