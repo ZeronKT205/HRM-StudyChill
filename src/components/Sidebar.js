@@ -15,16 +15,17 @@ import {
   LogOut,
   ChevronRight,
   GraduationCap,
+  Sparkles,
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const isAdmin = session?.user?.role === 'admin';
-  const [pendingCount, setPendingCount] = useState(0);
+  const [counts, setCounts] = useState({ combo: 0, trial: 0 });
 
-  // Poll the number of registrations that need processing (admin only) so the
-  // red badge stays fresh. Also refresh on navigation and on the custom event
+  // Poll how many combo registrations and trials need processing (admin only) so
+  // the red badges stay fresh. Also refresh on navigation and on the custom event
   // dispatched right after a registration is approved/deleted.
   useEffect(() => {
     if (!isAdmin) return;
@@ -35,7 +36,7 @@ export default function Sidebar({ isOpen, onClose }) {
         const res = await fetch('/api/registrations/pending-count', { cache: 'no-store' });
         if (!res.ok) return;
         const data = await res.json();
-        if (alive) setPendingCount(data.count || 0);
+        if (alive) setCounts({ combo: data.combo || 0, trial: data.trial || 0 });
       } catch {
         /* ignore */
       }
@@ -73,6 +74,7 @@ export default function Sidebar({ isOpen, onClose }) {
         { href: '/dashboard/admin', icon: Shield, label: 'Admin Panel' },
         { href: '/dashboard/admin/orders', icon: ClipboardList, label: 'Tất cả đơn hàng' },
         { href: '/dashboard/admin/registrations', icon: GraduationCap, label: 'Đăng ký khóa học', badge: 'registrations' },
+        { href: '/dashboard/admin/trials', icon: Sparkles, label: 'Học thử', badge: 'trials' },
         { href: '/dashboard/admin/users', icon: Users, label: 'Quản lý CTV' },
       ],
     });
@@ -106,7 +108,8 @@ export default function Sidebar({ isOpen, onClose }) {
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname === item.href;
-                const badgeCount = item.badge === 'registrations' ? pendingCount : 0;
+                const badgeCount =
+                  item.badge === 'registrations' ? counts.combo : item.badge === 'trials' ? counts.trial : 0;
                 return (
                   <Link
                     key={item.href}

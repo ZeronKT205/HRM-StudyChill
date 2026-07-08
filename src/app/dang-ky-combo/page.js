@@ -44,11 +44,13 @@ export default function DangKyComboPage() {
   const [trialErrors, setTrialErrors] = useState({});
   const [trialSubmitting, setTrialSubmitting] = useState(false);
   const [trialDone, setTrialDone] = useState(false);
+  const [trialAlready, setTrialAlready] = useState('');
 
   function openTrial() {
     setTrialForm({ fullName: '', phone: '', email: '', note: '' });
     setTrialErrors({});
     setTrialDone(false);
+    setTrialAlready('');
     setTrialOpen(true);
   }
   function closeTrial() {
@@ -82,6 +84,10 @@ export default function DangKyComboPage() {
         body: JSON.stringify({ ...trialForm, type: 'trial' }),
       });
       const data = await res.json();
+      if (res.status === 409 || data.alreadyTrial) {
+        setTrialAlready(data.message || 'Bạn đã đăng ký học thử trước đó rồi.');
+        return;
+      }
       if (!res.ok) throw new Error(data.error || 'Đăng ký thất bại');
       setTrialDone(true);
     } catch (err) {
@@ -530,7 +536,29 @@ export default function DangKyComboPage() {
       {trialOpen && (
         <div className="modal-backdrop" onClick={closeTrial}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            {trialDone ? (
+            {trialAlready ? (
+              <div className="modal-body" style={{ textAlign: 'center', padding: 'var(--space-10) var(--space-6)' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
+                  <div style={{ width: 72, height: 72, borderRadius: 999, background: 'var(--color-gleam-light)', border: '2px solid var(--border-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-radiate)' }}>
+                    <Sparkles size={38} />
+                  </div>
+                </div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-xl)', marginBottom: 'var(--space-2)' }}>
+                  Bạn đã học thử rồi!
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-6)' }}>
+                  {trialAlready}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+                  <a href={COURSE_SHEET_URL} target="_blank" rel="noopener noreferrer" className="btn btn-outline">
+                    <BookOpen size={16} /> Xem full khóa học
+                  </a>
+                  <button className="btn btn-primary" onClick={closeTrial}>
+                    <GraduationCap size={16} /> Xem các gói khóa học
+                  </button>
+                </div>
+              </div>
+            ) : trialDone ? (
               <div className="modal-body" style={{ textAlign: 'center', padding: 'var(--space-10) var(--space-6)' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
                   <div style={{ width: 72, height: 72, borderRadius: 999, background: '#e8f5e6', border: '2px solid var(--border-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-herb)' }}>

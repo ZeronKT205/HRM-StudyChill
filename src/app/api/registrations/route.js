@@ -5,7 +5,7 @@ import connectDB from '@/lib/mongodb';
 import Registration from '@/lib/models/Registration';
 import { getComboById } from '@/lib/combos';
 import { buildDesCode, buildQrUrl, getPaymentWindowMs } from '@/lib/payments';
-import { sendRegistrationReceivedEmail, sendTrialReceivedEmail } from '@/lib/email';
+import { sendRegistrationReceivedEmail, sendTrialReceivedEmail, sendTrialAlreadyEmail } from '@/lib/email';
 
 // POST /api/registrations - Public: a student registers for a combo (or a free trial)
 export async function POST(request) {
@@ -39,6 +39,31 @@ export async function POST(request) {
 
     // ===== Free trial branch (no payment) =====
     if (isTrial) {
+      // Prevent repeat trials: block if this phone OR email already used a trial.
+      const phoneTrim = phone.trim();
+      const existingTrial = await Registration.findOne({
+        type: 'trial',
+        $or: [{ email: cleanEmail }, { phone: phoneTrim }],
+      }).select('_id').lean();
+
+      if (existingTrial) {
+        // Nudge them to buy + email the "view full course" link.
+        try {
+          await sendTrialAlreadyEmail(cleanEmail);
+        } catch (mailErr) {
+          console.error('sendTrialAlreadyEmail failed:', mailErr?.message);
+        }
+        return NextResponse.json(
+          {
+            error: 'ALREADY_TRIAL',
+            alreadyTrial: true,
+            message:
+              'Bạn đã đăng ký học thử trước đó rồi. Hãy đăng ký khóa học để trải nghiệm trọn vẹn đến hết kỳ thi THPT Quốc Gia! Chúng tôi vừa gửi email kèm link xem toàn bộ khóa học cho bạn.',
+          },
+          { status: 409 }
+        );
+      }
+
       const _id = new mongoose.Types.ObjectId();
 
       // Send the "received" email first — gate creation on a successful send.
@@ -176,31 +201,24 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const status = searchParams.get('status');
-    const paymentStatus = searchParams.get('paymentStatus');
+    const type = searchParams.get('type'); // 'combo' | 'trial'
     const bucket = searchParams.get('bucket'); // workflow-oriented filter
     const skip = (page - 1) * limit;
 
     const query = {};
-    if (status && status !== 'all') query.status = status;
-    if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
+
+    // Registration type: the course-registration tab passes 'combo', the trial tab 'trial'.
+    if (type === 'combo') query.type = { $ne: 'trial' };
+    else if (type === 'trial') query.type = 'trial';
 
     // High-level workflow buckets used by the admin page filters.
-    // "needs processing" = paid combos not yet processed OR trials not yet processed.
-    if (bucket === 'pending') {
-      query.type = { $ne: 'trial' };
-      query.paymentStatus = 'pending';
-    } else if (bucket === 'needs_processing') {
-      query.$or = [
-        { type: { $ne: 'trial' }, paymentStatus: 'paid', processed: false },
-        { type: 'trial', processed: false },
-      ];
+    if (bucket === 'needs_processing') {
+      query.processed = false;
+      if (type !== 'trial') query.paymentStatus = 'paid'; // combos must be paid first
     } else if (bucket === 'approved') {
       query.processed = true;
-    } else if (bucket === 'trial') {
-      query.type = 'trial';
-    } else if (bucket === 'combo') {
-      query.type = { $ne: 'trial' };
+    } else if (bucket === 'pending') {
+      query.paymentStatus = 'pending';
     }
 
     const [registrations, total] = await Promise.all([

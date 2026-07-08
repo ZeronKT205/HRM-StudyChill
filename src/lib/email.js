@@ -1,5 +1,10 @@
 import nodemailer from 'nodemailer';
 
+// Public "view full course" link (Google Sheet). Overridable via env.
+const COURSE_VIEW_URL =
+  process.env.COURSE_VIEW_URL ||
+  'https://docs.google.com/spreadsheets/d/1ELtsqjpKLf3ICb116NAe6ACuIIKJmz2R/edit?gid=321020953#gid=321020953';
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
@@ -207,9 +212,35 @@ export async function sendTrialApprovedEmail(toEmail, selectedFolders) {
       <p>Đăng ký <strong>học thử</strong> của bạn tại STUDYCHILL đã được duyệt! 🎉</p>
       ${selectedFolders && selectedFolders.length > 0
         ? `<p>Bạn có thể truy cập tài liệu học thử qua các liên kết Google Drive dưới đây (đăng nhập bằng chính email <strong>${toEmail}</strong>):</p>${foldersLinksHtml(selectedFolders)}`
-        : '<p>Đội ngũ STUDYCHILL sẽ liên hệ với bạn để hướng dẫn truy cập tài liệu học thử.</p>'}
+        : `<p>Tài khoản học thử của bạn đã được kích hoạt. Vui lòng dùng chính địa chỉ email <strong>${toEmail}</strong> này để truy cập tài liệu học tập (email của bạn đã được thêm vào nhóm học tập).</p>`}
       <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
         Chúc bạn có trải nghiệm học thử thật hiệu quả. Nếu ưng ý, hãy đăng ký khóa học đầy đủ để không bỏ lỡ tài liệu nào nhé!
+      </div>
+    `),
+  };
+  return transporter.sendMail(mailOptions);
+}
+
+/**
+ * Sent when someone tries to register a trial again with a phone/email that
+ * already used the free trial. Nudges them to buy, and shares the full course view.
+ */
+export async function sendTrialAlreadyEmail(toEmail) {
+  const mailOptions = {
+    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
+    to: toEmail,
+    subject: '[STUDYCHILL] Bạn đã dùng học thử — Xem toàn bộ khóa học 👀',
+    html: emailShell(`
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>Bạn đã đăng ký <strong>học thử</strong> trước đó rồi. Để trải nghiệm trọn vẹn và đồng hành cùng STUDYCHILL <strong>đến hết kỳ thi THPT Quốc Gia</strong>, hãy đăng ký khóa học đầy đủ nhé!</p>
+      <p>Trong lúc đó, bạn có thể xem <strong>toàn bộ khóa học</strong> tại đây:</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${COURSE_VIEW_URL}" target="_blank" style="display: inline-block; background-color: #ed7a13; color: #ffffff; font-weight: 700; text-decoration: none; padding: 12px 24px; border: 2px solid #2a3114; border-radius: 10px; box-shadow: 3px 3px 0 #2a3114;">
+          👀 VIEW FULL KHÓA HỌC
+        </a>
+      </div>
+      <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
+        Đăng ký khóa học để được cấp quyền học đầy đủ tài liệu đến hết kỳ thi. Mọi thắc mắc vui lòng liên hệ đội ngũ STUDYCHILL.
       </div>
     `),
   };

@@ -33,7 +33,6 @@ const BUCKETS = [
   { key: 'needs_processing', label: 'Cần xử lý' },
   { key: 'approved', label: 'Đã duyệt' },
   { key: 'pending', label: 'Chờ thanh toán' },
-  { key: 'trial', label: 'Học thử' },
 ];
 
 export default function AdminRegistrationsPage() {
@@ -68,7 +67,7 @@ export default function AdminRegistrationsPage() {
   async function fetchRegistrations() {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: pagination.page, limit: 15, bucket });
+      const params = new URLSearchParams({ page: pagination.page, limit: 15, bucket, type: 'combo' });
       const res = await fetch(`/api/registrations?${params}`);
       const data = await res.json();
       setRegistrations(data.registrations || []);

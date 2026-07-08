@@ -15,15 +15,13 @@ export async function GET() {
     }
 
     await connectDB();
-    // Needs processing = paid combos not yet processed OR trials not yet processed.
-    const count = await Registration.countDocuments({
-      $or: [
-        { type: { $ne: 'trial' }, paymentStatus: 'paid', processed: false },
-        { type: 'trial', processed: false },
-      ],
-    });
+    // Breakdown so the sidebar can badge combos and trials separately.
+    const [combo, trial] = await Promise.all([
+      Registration.countDocuments({ type: { $ne: 'trial' }, paymentStatus: 'paid', processed: false }),
+      Registration.countDocuments({ type: 'trial', processed: false }),
+    ]);
 
-    return NextResponse.json({ count });
+    return NextResponse.json({ count: combo + trial, combo, trial });
   } catch (error) {
     console.error('GET /api/registrations/pending-count error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
