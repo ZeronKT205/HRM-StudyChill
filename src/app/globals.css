@@ -446,6 +446,12 @@ input, textarea, select {
   border: 1px solid #f5c2c2;
 }
 
+.badge-trial {
+  background: #f3e8ff;
+  color: #5b3b8c;
+  border: 1px solid #d9c2f0;
+}
+
 .badge-admin {
   background: var(--color-violet);
   color: white;

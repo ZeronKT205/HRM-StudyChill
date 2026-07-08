@@ -15,7 +15,13 @@ export async function GET() {
     }
 
     await connectDB();
-    const count = await Registration.countDocuments({ paymentStatus: 'paid', processed: false });
+    // Needs processing = paid combos not yet processed OR trials not yet processed.
+    const count = await Registration.countDocuments({
+      $or: [
+        { type: { $ne: 'trial' }, paymentStatus: 'paid', processed: false },
+        { type: 'trial', processed: false },
+      ],
+    });
 
     return NextResponse.json({ count });
   } catch (error) {

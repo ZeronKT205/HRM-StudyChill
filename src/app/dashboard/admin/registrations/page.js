@@ -33,6 +33,7 @@ const BUCKETS = [
   { key: 'needs_processing', label: 'Cần xử lý' },
   { key: 'approved', label: 'Đã duyệt' },
   { key: 'pending', label: 'Chờ thanh toán' },
+  { key: 'trial', label: 'Học thử' },
 ];
 
 export default function AdminRegistrationsPage() {
@@ -92,7 +93,8 @@ export default function AdminRegistrationsPage() {
 
   async function handleApprove() {
     if (!processTarget) return;
-    if (processFolders.length === 0) {
+    // Combo needs at least one folder; trial may be approved with none (email only).
+    if (processTarget.type !== 'trial' && processFolders.length === 0) {
       setProcessError('Vui lòng chọn ít nhất một khóa học để cấp quyền.');
       return;
     }
@@ -200,6 +202,7 @@ export default function AdminRegistrationsPage() {
                 <tbody>
                   {registrations.map((r) => {
                     const pay = PAYMENT_CONFIG[r.paymentStatus] || PAYMENT_CONFIG.pending;
+                    const isTrial = r.type === 'trial';
                     return (
                       <tr key={r._id}>
                         <td>
@@ -222,19 +225,27 @@ export default function AdminRegistrationsPage() {
                         </td>
                         <td>
                           <span className="flex items-center gap-1" style={{ fontSize: 'var(--text-sm)', fontWeight: 600 }}>
-                            <GraduationCap size={14} style={{ color: 'var(--text-muted)' }} /> {r.comboName}
+                            <GraduationCap size={14} style={{ color: 'var(--text-muted)' }} /> {isTrial ? 'Học thử' : r.comboName}
                           </span>
-                          {r.desCode && (
-                            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
-                              {r.desCode}
-                            </div>
+                          {isTrial ? (
+                            <span className="badge badge-trial" style={{ marginTop: 2 }}>🎁 Học thử</span>
+                          ) : (
+                            r.desCode && (
+                              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                                {r.desCode}
+                              </div>
+                            )
                           )}
                         </td>
                         <td style={{ fontWeight: 700, color: 'var(--color-herb)', whiteSpace: 'nowrap', fontSize: 'var(--text-sm)' }}>
-                          {formatVND(r.amount ?? r.comboPrice)}
+                          {isTrial ? '—' : formatVND(r.amount ?? r.comboPrice)}
                         </td>
                         <td>
-                          <span className={`badge ${pay.class}`}>{pay.label}</span>
+                          {isTrial ? (
+                            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>Miễn phí</span>
+                          ) : (
+                            <span className={`badge ${pay.class}`}>{pay.label}</span>
+                          )}
                         </td>
                         <td style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs)', whiteSpace: 'nowrap' }}>
                           {formatDate(r.createdAt)}
@@ -312,15 +323,21 @@ export default function AdminRegistrationsPage() {
                     </div>
 
                     <div style={{ background: 'var(--color-linen)', border: '2px solid var(--border-dark)', borderRadius: 'var(--border-radius-md)', padding: 'var(--space-4)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }}>{processTarget.comboName}</span>
-                        <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--color-herb)', whiteSpace: 'nowrap' }}>
-                          {formatVND(processTarget.amount ?? processTarget.comboPrice)}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
-                        {processTarget.desCode}
-                      </div>
+                      {processTarget.type === 'trial' ? (
+                        <span className="badge badge-trial" style={{ fontSize: 'var(--text-sm)' }}>🎁 Đăng ký học thử</span>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }}>{processTarget.comboName}</span>
+                            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, color: 'var(--color-herb)', whiteSpace: 'nowrap' }}>
+                              {formatVND(processTarget.amount ?? processTarget.comboPrice)}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'var(--font-display)' }}>
+                            {processTarget.desCode}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <InfoLine icon={<User size={14} />} label="Học sinh" value={processTarget.fullName} />
@@ -338,14 +355,16 @@ export default function AdminRegistrationsPage() {
                     )}
 
                     <div style={{ background: '#e8f5e6', border: '1.5px solid #a8e6a3', borderRadius: 'var(--border-radius-md)', padding: 'var(--space-3)', fontSize: 'var(--text-xs)', color: '#1a4a18' }}>
-                      Khi duyệt: cấp quyền Drive + gửi email cho học sinh, tạo đơn hàng gắn tài khoản admin và tự động <strong>đã trả hoa hồng</strong>.
+                      {processTarget.type === 'trial'
+                        ? 'Khi duyệt: cấp quyền Drive cho các thư mục đã chọn (có thể để trống) + gửi email thông báo học thử cho học sinh.'
+                        : 'Khi duyệt: cấp quyền Drive + gửi email cho học sinh, tạo đơn hàng gắn tài khoản admin và tự động đã trả hoa hồng.'}
                     </div>
                   </div>
 
                   {/* Right: folder picker */}
                   <div className="flex flex-col gap-3">
                     <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <FolderOpen size={14} /> Chọn khóa học cần cấp quyền
+                      <FolderOpen size={14} /> Chọn khóa học cần cấp quyền{processTarget.type === 'trial' ? ' (có thể để trống)' : ''}
                     </div>
                     <FolderPicker selectedFolders={processFolders} onSelectionChange={setProcessFolders} />
                   </div>

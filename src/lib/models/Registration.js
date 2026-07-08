@@ -1,7 +1,15 @@
 import mongoose from 'mongoose';
 
-// Public course-combo registration submitted by a student from /dang-ky-combo.
+// Public registration submitted from /dang-ky-combo — either a paid combo
+// purchase (type: 'combo') or a free trial request (type: 'trial').
 const RegistrationSchema = new mongoose.Schema({
+  // Distinguishes a paid combo registration from a free trial request.
+  type: {
+    type: String,
+    enum: ['combo', 'trial'],
+    default: 'combo',
+    index: true,
+  },
   fullName: {
     type: String,
     required: true,

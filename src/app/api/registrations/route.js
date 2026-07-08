@@ -5,17 +5,18 @@ import connectDB from '@/lib/mongodb';
 import Registration from '@/lib/models/Registration';
 import { getComboById } from '@/lib/combos';
 import { buildDesCode, buildQrUrl, getPaymentWindowMs } from '@/lib/payments';
-import { sendRegistrationReceivedEmail } from '@/lib/email';
+import { sendRegistrationReceivedEmail, sendTrialReceivedEmail } from '@/lib/email';
 
-// POST /api/registrations - Public: a student registers for a combo
+// POST /api/registrations - Public: a student registers for a combo (or a free trial)
 export async function POST(request) {
   try {
     await connectDB();
 
     const body = await request.json();
     const { fullName, phone, email, comboId, note } = body;
+    const isTrial = body.type === 'trial';
 
-    // ===== Validation =====
+    // ===== Common validation =====
     if (!fullName || !fullName.trim()) {
       return NextResponse.json({ error: 'Vui lòng nhập họ tên.' }, { status: 400 });
     }
@@ -26,7 +27,7 @@ export async function POST(request) {
     if (digits.length < 9 || digits.length > 12) {
       return NextResponse.json({ error: 'Số điện thoại không hợp lệ.' }, { status: 400 });
     }
-    // Email is now required (used to send confirmation emails).
+    // Email is required (used to send confirmation emails / verify the address).
     if (!email || !email.trim()) {
       return NextResponse.json({ error: 'Vui lòng nhập email.' }, { status: 400 });
     }
@@ -34,6 +35,50 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email không hợp lệ.' }, { status: 400 });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
+    // ===== Free trial branch (no payment) =====
+    if (isTrial) {
+      const _id = new mongoose.Types.ObjectId();
+
+      // Send the "received" email first — gate creation on a successful send.
+      try {
+        await sendTrialReceivedEmail(cleanEmail);
+      } catch (mailErr) {
+        console.error('sendTrialReceivedEmail failed:', mailErr?.message);
+        return NextResponse.json(
+          { error: 'Không gửi được email xác nhận. Vui lòng kiểm tra lại địa chỉ email.' },
+          { status: 502 }
+        );
+      }
+
+      const trial = await Registration.create({
+        _id,
+        type: 'trial',
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: cleanEmail,
+        comboId: 'trial',
+        comboName: 'Đăng ký học thử',
+        comboPrice: 0,
+        note: (note || '').trim(),
+        amount: 0,
+        // Give trials a unique, non-payment desCode so the unique index is satisfied.
+        desCode: `TRIAL${String(_id).toUpperCase()}`,
+        qrUrl: '',
+        paymentStatus: 'pending',
+        expiresAt: null,
+        receivedEmailSent: true,
+        status: 'new',
+      });
+
+      return NextResponse.json(
+        { message: 'Đăng ký học thử thành công', registration: { id: trial._id.toString(), type: 'trial' } },
+        { status: 201 }
+      );
+    }
+
+    // ===== Combo branch (paid) =====
     // Resolve combo from the server-side catalog so price/name can't be spoofed.
     const combo = getComboById(comboId);
     if (!combo) {
@@ -52,7 +97,6 @@ export async function POST(request) {
     const _id = new mongoose.Types.ObjectId();
     const amount = combo.price;
     const expiresAt = new Date(Date.now() + getPaymentWindowMs());
-    const cleanEmail = email.trim().toLowerCase();
 
     // Send the "received" email FIRST — only proceed to the QR page if it sends,
     // which also serves as a basic check that the email address is deliverable.
@@ -142,13 +186,21 @@ export async function GET(request) {
     if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
 
     // High-level workflow buckets used by the admin page filters.
+    // "needs processing" = paid combos not yet processed OR trials not yet processed.
     if (bucket === 'pending') {
+      query.type = { $ne: 'trial' };
       query.paymentStatus = 'pending';
     } else if (bucket === 'needs_processing') {
-      query.paymentStatus = 'paid';
-      query.processed = false;
+      query.$or = [
+        { type: { $ne: 'trial' }, paymentStatus: 'paid', processed: false },
+        { type: 'trial', processed: false },
+      ];
     } else if (bucket === 'approved') {
       query.processed = true;
+    } else if (bucket === 'trial') {
+      query.type = 'trial';
+    } else if (bucket === 'combo') {
+      query.type = { $ne: 'trial' };
     }
 
     const [registrations, total] = await Promise.all([

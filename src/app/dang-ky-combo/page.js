@@ -19,6 +19,7 @@ import {
   Megaphone,
   MessageCircle,
   UsersRound,
+  CheckCircle2,
 } from 'lucide-react';
 
 // External resources shown on the public page.
@@ -36,6 +37,59 @@ export default function DangKyComboPage() {
   const [form, setForm] = useState({ fullName: '', phone: '', email: '', note: '' });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Free-trial modal state
+  const [trialOpen, setTrialOpen] = useState(false);
+  const [trialForm, setTrialForm] = useState({ fullName: '', phone: '', email: '', note: '' });
+  const [trialErrors, setTrialErrors] = useState({});
+  const [trialSubmitting, setTrialSubmitting] = useState(false);
+  const [trialDone, setTrialDone] = useState(false);
+
+  function openTrial() {
+    setTrialForm({ fullName: '', phone: '', email: '', note: '' });
+    setTrialErrors({});
+    setTrialDone(false);
+    setTrialOpen(true);
+  }
+  function closeTrial() {
+    if (trialSubmitting) return;
+    setTrialOpen(false);
+  }
+  function handleTrialChange(e) {
+    const { name, value } = e.target;
+    setTrialForm((prev) => ({ ...prev, [name]: value }));
+    if (trialErrors[name]) setTrialErrors((prev) => ({ ...prev, [name]: null }));
+  }
+  function validateTrial() {
+    const er = {};
+    if (!trialForm.fullName.trim()) er.fullName = 'Vui lòng nhập họ tên';
+    const d = trialForm.phone.replace(/[^\d]/g, '');
+    if (!trialForm.phone.trim()) er.phone = 'Vui lòng nhập số điện thoại';
+    else if (d.length < 9 || d.length > 12) er.phone = 'Số điện thoại không hợp lệ';
+    if (!trialForm.email.trim()) er.email = 'Vui lòng nhập email';
+    else if (!/\S+@\S+\.\S+/.test(trialForm.email)) er.email = 'Email không hợp lệ';
+    setTrialErrors(er);
+    return Object.keys(er).length === 0;
+  }
+  async function handleTrialSubmit(ev) {
+    ev.preventDefault();
+    if (!validateTrial()) return;
+    setTrialSubmitting(true);
+    try {
+      const res = await fetch('/api/registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...trialForm, type: 'trial' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Đăng ký thất bại');
+      setTrialDone(true);
+    } catch (err) {
+      setTrialErrors((prev) => ({ ...prev, submit: err.message }));
+    } finally {
+      setTrialSubmitting(false);
+    }
+  }
 
   function openRegister(combo) {
     setSelectedCombo(combo);
@@ -156,6 +210,14 @@ export default function DangKyComboPage() {
             >
               <BookOpen size={20} /> VIEW KHÓA HỌC <ExternalLink size={16} style={{ opacity: 0.85 }} />
             </a>
+            <button
+              type="button"
+              className="btn btn-outline btn-lg"
+              id="trial-register-btn"
+              onClick={openTrial}
+            >
+              <GraduationCap size={20} /> ĐĂNG KÍ HỌC THỬ
+            </button>
           </div>
         </div>
       </header>
@@ -460,6 +522,100 @@ export default function DangKyComboPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===== TRIAL MODAL ===== */}
+      {trialOpen && (
+        <div className="modal-backdrop" onClick={closeTrial}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            {trialDone ? (
+              <div className="modal-body" style={{ textAlign: 'center', padding: 'var(--space-10) var(--space-6)' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-4)' }}>
+                  <div style={{ width: 72, height: 72, borderRadius: 999, background: '#e8f5e6', border: '2px solid var(--border-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-herb)' }}>
+                    <CheckCircle2 size={40} />
+                  </div>
+                </div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 'var(--text-xl)', marginBottom: 'var(--space-2)' }}>
+                  Đã gửi đăng ký học thử! 🎉
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-6)' }}>
+                  Cảm ơn bạn! Vui lòng chờ Admin duyệt — chúng tôi sẽ gửi email thông báo khi tài khoản học thử được kích hoạt.
+                </p>
+                <button className="btn btn-primary" onClick={closeTrial}>Đóng</button>
+              </div>
+            ) : (
+              <>
+                <div className="modal-header">
+                  <h3 className="modal-title">🎁 Đăng ký học thử</h3>
+                  <button className="btn btn-ghost btn-icon" onClick={closeTrial} aria-label="Đóng" disabled={trialSubmitting}>
+                    <X size={18} />
+                  </button>
+                </div>
+                <form onSubmit={handleTrialSubmit}>
+                  <div className="modal-body">
+                    <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--space-4)' }}>
+                      Để lại thông tin, đội ngũ STUDYCHILL sẽ duyệt và kích hoạt tài khoản học thử cho bạn qua email.
+                    </p>
+                    <div className="flex flex-col gap-4">
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="t-fullName">
+                          <User size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                          Họ và tên <span className="required">*</span>
+                        </label>
+                        <input type="text" id="t-fullName" name="fullName" className={`form-input ${trialErrors.fullName ? 'error' : ''}`} value={trialForm.fullName} onChange={handleTrialChange} placeholder="Nguyễn Văn A" />
+                        {trialErrors.fullName && <span className="form-error">{trialErrors.fullName}</span>}
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="t-phone">
+                          <Phone size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                          Số điện thoại (Zalo) <span className="required">*</span>
+                        </label>
+                        <input type="tel" id="t-phone" name="phone" className={`form-input ${trialErrors.phone ? 'error' : ''}`} value={trialForm.phone} onChange={handleTrialChange} placeholder="09xxxxxxxx" />
+                        {trialErrors.phone && <span className="form-error">{trialErrors.phone}</span>}
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="t-email">
+                          <Mail size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                          Email <span className="required">*</span>
+                        </label>
+                        <input type="email" id="t-email" name="email" className={`form-input ${trialErrors.email ? 'error' : ''}`} value={trialForm.email} onChange={handleTrialChange} placeholder="email@gmail.com" />
+                        {trialErrors.email ? (
+                          <span className="form-error">{trialErrors.email}</span>
+                        ) : (
+                          <span className="form-helper">Email nhận thông báo duyệt học thử — vui lòng nhập chính xác.</span>
+                        )}
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" htmlFor="t-note">
+                          <MessageSquare size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
+                          Môn / giáo viên muốn học thử <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(không bắt buộc)</span>
+                        </label>
+                        <textarea id="t-note" name="note" className="form-textarea" value={trialForm.note} onChange={handleTrialChange} placeholder="VD: Muốn học thử môn Toán thầy Đỗ Văn Đức" rows={2} />
+                      </div>
+
+                      {trialErrors.submit && (
+                        <div style={{ background: '#fde8e8', border: '2px solid var(--color-coral)', borderRadius: 'var(--border-radius-md)', padding: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <AlertTriangle size={18} style={{ color: 'var(--color-coral)', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600, color: '#6b1c1c', fontSize: 'var(--text-sm)' }}>{trialErrors.submit}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-ghost" onClick={closeTrial} disabled={trialSubmitting}>Hủy</button>
+                    <button type="submit" className="btn btn-primary" disabled={trialSubmitting}>
+                      {trialSubmitting ? (
+                        <><Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> Đang gửi...</>
+                      ) : (
+                        <>Gửi đăng ký học thử</>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

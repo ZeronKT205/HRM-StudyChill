@@ -4,7 +4,7 @@ import connectDB from '@/lib/mongodb';
 import Registration from '@/lib/models/Registration';
 import Order from '@/lib/models/Order';
 import { shareMultipleFolders } from '@/lib/drive';
-import { sendApprovalEmail } from '@/lib/email';
+import { sendApprovalEmail, sendTrialApprovedEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,13 +25,6 @@ export async function POST(request, { params }) {
     const body = await request.json();
     const selectedFolders = Array.isArray(body.selectedFolders) ? body.selectedFolders : [];
 
-    if (selectedFolders.length === 0) {
-      return NextResponse.json(
-        { error: 'Vui lòng chọn ít nhất một khóa học để cấp quyền.' },
-        { status: 400 }
-      );
-    }
-
     const registration = await Registration.findById(id);
     if (!registration) {
       return NextResponse.json({ error: 'Không tìm thấy đăng ký' }, { status: 404 });
@@ -40,19 +33,39 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Đơn này đã được duyệt trước đó.' }, { status: 400 });
     }
 
+    const isTrial = registration.type === 'trial';
+
+    // Combo approval must grant at least one folder; trials may grant 0 (email only).
+    if (!isTrial && selectedFolders.length === 0) {
+      return NextResponse.json(
+        { error: 'Vui lòng chọn ít nhất một khóa học để cấp quyền.' },
+        { status: 400 }
+      );
+    }
+
     const courseDescription = registration.note
       ? `${registration.comboName} — ${registration.note}`
       : registration.comboName;
 
-    // Share the selected Drive folders with the student + send the activation email
-    // (run in parallel, mirroring the order-approval flow).
+    // Share any selected Drive folders with the student + send the activation email.
     const folderIds = selectedFolders.map((f) => f.folderId).filter(Boolean);
-    const [shareResults] = await Promise.all([
-      shareMultipleFolders(folderIds, registration.email),
-      sendApprovalEmail(registration.email, courseDescription, selectedFolders).catch((emailError) => {
-        console.error('Failed to send activation email:', emailError?.message);
-      }),
-    ]);
+    let shareResults = [];
+    if (folderIds.length > 0) {
+      const [res] = await Promise.all([
+        shareMultipleFolders(folderIds, registration.email),
+        isTrial
+          ? sendTrialApprovedEmail(registration.email, selectedFolders).catch((e) => console.error('trial email failed:', e?.message))
+          : sendApprovalEmail(registration.email, courseDescription, selectedFolders).catch((e) => console.error('activation email failed:', e?.message)),
+      ]);
+      shareResults = res;
+    } else {
+      // No folders (trial only): just send the notification email.
+      try {
+        await sendTrialApprovedEmail(registration.email, []);
+      } catch (e) {
+        console.error('trial email failed:', e?.message);
+      }
+    }
 
     const driveShareStatus = shareResults.map((r) => ({
       folderId: r.folderId,
@@ -61,33 +74,36 @@ export async function POST(request, { params }) {
       error: r.error || '',
     }));
 
-    // Create the Order attributed to the admin account, already commission-paid.
-    const order = await Order.create({
-      ctvName: session.user.name || 'Admin',
-      ctvEmail: session.user.email.toLowerCase(),
-      customerEmail: registration.email,
-      courseDescription,
-      orderValue: registration.amount,
-      selectedFolders,
-      driveShareStatus,
-      status: 'paid',
-      commissionDeducted: true,
-      adminNote: `Duyệt từ đăng ký combo (${registration.desCode})`,
-    });
+    let order = null;
+    if (!isTrial) {
+      // Create the Order attributed to the admin account, already commission-paid.
+      order = await Order.create({
+        ctvName: session.user.name || 'Admin',
+        ctvEmail: session.user.email.toLowerCase(),
+        customerEmail: registration.email,
+        courseDescription,
+        orderValue: registration.amount,
+        selectedFolders,
+        driveShareStatus,
+        status: 'paid',
+        commissionDeducted: true,
+        adminNote: `Duyệt từ đăng ký combo (${registration.desCode})`,
+      });
+    }
 
     // Mark the registration as processed / approved.
     registration.processed = true;
     registration.processedAt = new Date();
     registration.approvedBy = session.user.email.toLowerCase();
-    registration.orderId = order._id;
+    registration.orderId = order ? order._id : null;
     registration.selectedFolders = selectedFolders;
     registration.driveShareStatus = driveShareStatus;
     registration.status = 'done';
     await registration.save();
 
     return NextResponse.json({
-      message: 'Đã duyệt và cấp quyền khóa học',
-      orderId: order._id.toString(),
+      message: isTrial ? 'Đã duyệt học thử' : 'Đã duyệt và cấp quyền khóa học',
+      orderId: order ? order._id.toString() : null,
       driveShareStatus,
     });
   } catch (error) {

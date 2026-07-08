@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAuthSession, isAdmin } from '@/lib/utils';
 import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
+import { sendOrderReceivedEmail } from '@/lib/email';
 
 // GET /api/orders - List orders
 export async function GET(request) {
@@ -98,6 +99,14 @@ export async function POST(request) {
       })),
       status: 'pending',
     });
+
+    // Notify the customer that we received the order (also verifies the email address).
+    // Best-effort: don't block order creation if the email fails.
+    try {
+      await sendOrderReceivedEmail(order.customerEmail, order.courseDescription);
+    } catch (mailErr) {
+      console.error('sendOrderReceivedEmail failed:', mailErr?.message);
+    }
 
     return NextResponse.json({ order, message: 'Order created successfully' }, { status: 201 });
   } catch (error) {

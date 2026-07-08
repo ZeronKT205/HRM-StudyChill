@@ -199,7 +199,7 @@ export default function NewOrderPage() {
                   ✅ Đơn hàng đã được tạo thành công và đang chờ duyệt!
                 </strong>
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', marginTop: 4 }}>
-                  Google Drive sẽ được tự động chia sẻ và email kích hoạt sẽ được gửi tới khách hàng sau khi Admin phê duyệt. Đang chuyển hướng...
+                  Email xác nhận &quot;đã nhận đơn&quot; đã được gửi tới khách hàng. Google Drive sẽ được tự động chia sẻ và email kích hoạt sẽ được gửi sau khi Admin phê duyệt. Đang chuyển hướng...
                 </p>
               </div>
             </div>

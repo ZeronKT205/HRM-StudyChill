@@ -135,3 +135,83 @@ export async function sendRegistrationConfirmedEmail(toEmail, comboName) {
   };
   return transporter.sendMail(mailOptions);
 }
+
+// Build the Drive folder links block used in activation emails.
+function foldersLinksHtml(selectedFolders) {
+  return selectedFolders && selectedFolders.length > 0
+    ? `<div style="background-color: #f9f3e3; padding: 15px; border: 1px solid #d4ceb8; border-radius: 8px; margin: 20px 0;">
+        <ul>${selectedFolders.map((f) => `
+          <li>
+            <strong>${f.folderName}</strong>:
+            <a href="https://drive.google.com/drive/folders/${f.folderId}" target="_blank" style="color: #6a8042; font-weight: bold; text-decoration: underline;">
+              Nhấn vào đây để truy cập thư mục
+            </a>
+          </li>`).join('')}</ul>
+      </div>`
+    : '';
+}
+
+/**
+ * Sent to the customer the moment a CTV submits their order — confirms the order
+ * was received (and that the email address is valid) while it awaits admin review.
+ */
+export async function sendOrderReceivedEmail(toEmail, courseDescription) {
+  const mailOptions = {
+    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
+    to: toEmail,
+    subject: '[STUDYCHILL] Đã tiếp nhận đơn hàng của bạn 📩',
+    html: emailShell(`
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>STUDYCHILL đã nhận được đơn hàng đăng ký của bạn. Bạn vui lòng chờ Admin duyệt, chúng tôi sẽ thông báo lại qua email khi khóa học được kích hoạt.</p>
+      ${courseDescription ? `<div style="background-color: #ffffff; padding: 15px; border: 2px solid #d4ceb8; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; color: #5a6340; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700;">Khóa học / sản phẩm</p>
+        <p style="margin: 6px 0 0 0; font-weight: 700; color: #6a8042;">${courseDescription}</p>
+      </div>` : ''}
+      <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
+        Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email. Nếu cần hỗ trợ, hãy liên hệ với chúng tôi.
+      </div>
+    `),
+  };
+  return transporter.sendMail(mailOptions);
+}
+
+/**
+ * Sent when a student submits the "Đăng ký học thử" (free trial) form.
+ */
+export async function sendTrialReceivedEmail(toEmail) {
+  const mailOptions = {
+    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
+    to: toEmail,
+    subject: '[STUDYCHILL] Đã tiếp nhận đăng ký học thử 📩',
+    html: emailShell(`
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>STUDYCHILL đã nhận được đăng ký <strong>học thử</strong> của bạn. Cảm ơn bạn đã quan tâm tới khóa học!</p>
+      <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
+        Vui lòng chờ Admin duyệt, chúng tôi sẽ gửi email thông báo khi tài khoản học thử của bạn được kích hoạt.
+      </div>
+    `),
+  };
+  return transporter.sendMail(mailOptions);
+}
+
+/**
+ * Sent when admin approves a trial registration.
+ */
+export async function sendTrialApprovedEmail(toEmail, selectedFolders) {
+  const mailOptions = {
+    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
+    to: toEmail,
+    subject: '[STUDYCHILL] Đăng ký học thử đã được duyệt 🎉',
+    html: emailShell(`
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>Đăng ký <strong>học thử</strong> của bạn tại STUDYCHILL đã được duyệt! 🎉</p>
+      ${selectedFolders && selectedFolders.length > 0
+        ? `<p>Bạn có thể truy cập tài liệu học thử qua các liên kết Google Drive dưới đây (đăng nhập bằng chính email <strong>${toEmail}</strong>):</p>${foldersLinksHtml(selectedFolders)}`
+        : '<p>Đội ngũ STUDYCHILL sẽ liên hệ với bạn để hướng dẫn truy cập tài liệu học thử.</p>'}
+      <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
+        Chúc bạn có trải nghiệm học thử thật hiệu quả. Nếu ưng ý, hãy đăng ký khóa học đầy đủ để không bỏ lỡ tài liệu nào nhé!
+      </div>
+    `),
+  };
+  return transporter.sendMail(mailOptions);
+}
