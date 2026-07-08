@@ -156,6 +156,8 @@ export async function POST(request) {
           expiresAt,
           receivedEmailSent: true,
           status: 'new',
+          // Baseline for the payment-reminder drip (new orders time from now).
+          dripBaseAt: new Date(),
         });
       } catch (err) {
         if (err?.code === 11000) continue; // duplicate desCode — regenerate

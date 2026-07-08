@@ -11,7 +11,6 @@ import {
   Trash2,
   Phone,
   Mail,
-  Download,
   Copy,
   Check,
   CheckCircle2,
@@ -36,7 +35,9 @@ export default function AdminTrialsPage() {
   const [pendingCount, setPendingCount] = useState(0);
 
   const [copied, setCopied] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [emailsOpen, setEmailsOpen] = useState(false);
+  const [emailList, setEmailList] = useState([]);
+  const [loadingEmails, setLoadingEmails] = useState(false);
   const [confirmProcess, setConfirmProcess] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [actionMsg, setActionMsg] = useState('');
@@ -88,45 +89,29 @@ export default function AdminTrialsPage() {
     return (data.registrations || []).map((r) => r.email).filter(Boolean);
   }
 
-  async function handleExport() {
-    setExporting(true);
+  async function openEmails() {
+    setLoadingEmails(true);
     setActionMsg('');
+    setCopied(false);
+    setEmailsOpen(true);
     try {
       const emails = await fetchPendingEmails();
-      if (emails.length === 0) {
-        setActionMsg('Không có email nào cần xử lý.');
-        return;
-      }
-      const csv = 'email\n' + emails.join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `hoc-thu-emails-${emails.length}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setActionMsg(`Đã export ${emails.length} email.`);
+      setEmailList(emails);
     } catch (err) {
-      setActionMsg('Export thất bại: ' + err.message);
+      setActionMsg('Không tải được danh sách email: ' + err.message);
+      setEmailList([]);
     } finally {
-      setExporting(false);
+      setLoadingEmails(false);
     }
   }
 
-  async function handleCopy() {
+  async function copyEmailList() {
     try {
-      const emails = await fetchPendingEmails();
-      if (emails.length === 0) {
-        setActionMsg('Không có email nào cần xử lý.');
-        return;
-      }
-      await navigator.clipboard.writeText(emails.join(', '));
+      await navigator.clipboard.writeText(emailList.join('\n'));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setActionMsg('Không sao chép được. Hãy dùng Export email.');
+      setActionMsg('Trình duyệt chặn copy — hãy bôi đen và Ctrl+C thủ công.');
     }
   }
 
@@ -195,13 +180,8 @@ export default function AdminTrialsPage() {
                 1) Export email → 2) Thêm vào Google Group → 3) Bấm &quot;Đã xử lý toàn bộ&quot;
               </div>
             </div>
-            <button className="btn btn-outline" onClick={handleExport} disabled={exporting || pendingCount === 0}>
-              {exporting ? <Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Download size={16} />}
-              Export email
-            </button>
-            <button className="btn btn-ghost" onClick={handleCopy} disabled={pendingCount === 0}>
-              {copied ? <Check size={16} style={{ color: 'var(--color-herb)' }} /> : <Copy size={16} />}
-              {copied ? 'Đã copy' : 'Copy email'}
+            <button className="btn btn-outline" onClick={openEmails} disabled={pendingCount === 0}>
+              <Mail size={16} /> Xuất email
             </button>
             <button className="btn btn-primary" onClick={() => setConfirmProcess(true)} disabled={pendingCount === 0}>
               <CheckCircle2 size={16} /> Đã xử lý toàn bộ
@@ -327,6 +307,53 @@ export default function AdminTrialsPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* Emails list modal (copy manually into Google Group) */}
+        {emailsOpen && (
+          <div className="modal-backdrop" onClick={() => setEmailsOpen(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+              <div className="modal-header">
+                <h3 className="modal-title">📧 Email học thử cần xử lý</h3>
+                <button className="btn btn-ghost btn-icon" onClick={() => setEmailsOpen(false)}><X size={18} /></button>
+              </div>
+              <div className="modal-body">
+                {loadingEmails ? (
+                  <div style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
+                    <Loader2 size={28} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--color-herb)' }} />
+                  </div>
+                ) : emailList.length === 0 ? (
+                  <div className="empty-state" style={{ padding: 'var(--space-8)' }}>
+                    <div className="empty-state-icon">📭</div>
+                    <div className="empty-state-title">Không có email cần xử lý</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>
+                        {emailList.length} email — mỗi dòng 1 mail, copy để thêm vào Google Group.
+                      </span>
+                      <button className="btn btn-outline btn-sm" onClick={copyEmailList}>
+                        {copied ? <Check size={14} style={{ color: 'var(--color-herb)' }} /> : <Copy size={14} />}
+                        {copied ? 'Đã copy' : 'Copy tất cả'}
+                      </button>
+                    </div>
+                    <textarea
+                      readOnly
+                      className="form-textarea"
+                      value={emailList.join('\n')}
+                      onFocus={(e) => e.target.select()}
+                      rows={Math.min(14, Math.max(4, emailList.length))}
+                      style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-sm)', width: '100%' }}
+                    />
+                  </>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-ghost" onClick={() => setEmailsOpen(false)}>Đóng</button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Confirm process-all modal */}

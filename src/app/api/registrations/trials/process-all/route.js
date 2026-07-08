@@ -6,6 +6,7 @@ import { sendTrialApprovedEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 // POST /api/registrations/trials/process-all  (admin only)
 // Marks ALL pending trial registrations as processed (đã duyệt) and emails each

@@ -42,3 +42,5 @@ next-env.d.ts
 
 # credentials & secrets
 service-account-drive.json
+# Apps Script cron contains NEXTAUTH_SECRET hardcoded — keep out of git
+/apps-script/

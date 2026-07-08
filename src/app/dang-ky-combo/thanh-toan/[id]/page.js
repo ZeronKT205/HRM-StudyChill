@@ -98,20 +98,24 @@ export default function ThanhToanPage() {
   useEffect(() => {
     if (!info || paid || expired) return;
 
-    // SSE: instant push from the SePay webhook.
-    try {
-      const es = new EventSource(`/api/registrations/${id}/stream`);
-      esRef.current = es;
-      es.onmessage = (ev) => {
-        try {
-          const msg = JSON.parse(ev.data);
-          if (msg.type === 'paid') markPaid();
-        } catch { /* ignore */ }
-      };
-      es.onerror = () => { /* keep polling fallback; browser auto-reconnects */ };
-    } catch { /* EventSource unsupported */ }
+    // SSE gives an instant push but relies on the webhook + stream sharing one
+    // process — true on a single VPS, NOT on Vercel serverless (cross-instance).
+    // So it's opt-in via NEXT_PUBLIC_ENABLE_SSE; polling below is the reliable path.
+    if (process.env.NEXT_PUBLIC_ENABLE_SSE === 'true') {
+      try {
+        const es = new EventSource(`/api/registrations/${id}/stream`);
+        esRef.current = es;
+        es.onmessage = (ev) => {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === 'paid') markPaid();
+          } catch { /* ignore */ }
+        };
+        es.onerror = () => { /* keep polling fallback; browser auto-reconnects */ };
+      } catch { /* EventSource unsupported */ }
+    }
 
-    // Polling fallback every 5s (covers multi-process deploys / missed SSE).
+    // Polling (primary): checks payment status every 4s. Works on any host.
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/registrations/${id}/public`, { cache: 'no-store' });
@@ -119,7 +123,7 @@ export default function ThanhToanPage() {
         const data = await res.json();
         if (data.paymentStatus === 'paid') markPaid();
       } catch { /* ignore */ }
-    }, 5000);
+    }, 4000);
 
     return cleanupWatchers;
   }, [info, paid, expired, id, markPaid, cleanupWatchers]);

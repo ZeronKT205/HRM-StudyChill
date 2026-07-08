@@ -86,6 +86,15 @@ const RegistrationSchema = new mongoose.Schema({
   receivedEmailSent: { type: Boolean, default: false },
   confirmEmailSent: { type: Boolean, default: false },
 
+  // ===== Payment-reminder drip campaign (combo, chờ thanh toán) =====
+  // dripBaseAt: mốc thời gian dùng để tính các chạm. Đơn mới = createdAt;
+  // dữ liệu cũ sẽ được set = thời điểm cron chạy lần đầu (xử lý riêng).
+  dripBaseAt: { type: Date, default: null },
+  dripTouch: { type: Number, default: 0 }, // 0..3 số email nhắc đã gửi
+  dripLastSentAt: { type: Date, default: null },
+  // Người dùng bấm hủy nhận email nhắc.
+  unsubscribed: { type: Boolean, default: false },
+
   // ===== Admin processing (duyệt khóa học) =====
   // processed = admin has granted Drive access and created the corresponding Order.
   processed: { type: Boolean, default: false, index: true },
@@ -118,5 +127,7 @@ const RegistrationSchema = new mongoose.Schema({
 RegistrationSchema.index({ status: 1, createdAt: -1 });
 RegistrationSchema.index({ paymentStatus: 1, createdAt: -1 });
 RegistrationSchema.index({ paymentStatus: 1, processed: 1 });
+// For the drip cron: quickly find pending combos still in the campaign.
+RegistrationSchema.index({ type: 1, paymentStatus: 1, dripTouch: 1 });
 
 export default mongoose.models.Registration || mongoose.model('Registration', RegistrationSchema);
