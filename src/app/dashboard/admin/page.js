@@ -15,6 +15,10 @@ import {
   Database,
   Loader2,
   CheckCircle,
+  FolderOpen,
+  Plus,
+  X,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -25,6 +29,31 @@ export default function AdminPage() {
   const [syncing, setSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const [syncSuccess, setSyncSuccess] = useState(false);
+
+  // Root folder management
+  const [roots, setRoots] = useState([]);
+  const [saEmail, setSaEmail] = useState('');
+  const [loadingRoots, setLoadingRoots] = useState(true);
+  const [newRoot, setNewRoot] = useState('');
+  const [addingRoot, setAddingRoot] = useState(false);
+  const [rootError, setRootError] = useState('');
+  const [removingId, setRemovingId] = useState(null);
+
+  async function fetchRoots() {
+    setLoadingRoots(true);
+    try {
+      const res = await fetch('/api/drive/roots');
+      const data = await res.json();
+      if (res.ok) {
+        setRoots(data.roots || []);
+        setSaEmail(data.serviceAccountEmail || '');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingRoots(false);
+    }
+  }
 
   useEffect(() => {
     if (session && session.user?.role !== 'admin') {
@@ -49,7 +78,42 @@ export default function AdminPage() {
       }
     }
     fetchData();
+    fetchRoots();
   }, [session, router]);
+
+  async function addRoot(e) {
+    e.preventDefault();
+    if (!newRoot.trim()) return;
+    setAddingRoot(true);
+    setRootError('');
+    try {
+      const res = await fetch('/api/drive/roots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderId: newRoot.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Thêm thất bại');
+      setNewRoot('');
+      fetchRoots();
+    } catch (err) {
+      setRootError(err.message);
+    } finally {
+      setAddingRoot(false);
+    }
+  }
+
+  async function removeRoot(id) {
+    setRemovingId(id);
+    try {
+      const res = await fetch(`/api/drive/roots/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchRoots();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRemovingId(null);
+    }
+  }
 
   async function handleSync() {
     setSyncing(true);
@@ -226,6 +290,89 @@ export default function AdminPage() {
                 )}
               </button>
             </div>
+          </div>
+
+          {/* Root folders management */}
+          <div style={{ marginTop: 'var(--space-6)', borderTop: '2px solid var(--border-light)', paddingTop: 'var(--space-5)' }}>
+            <div className="flex items-center gap-2" style={{ marginBottom: 'var(--space-2)' }}>
+              <FolderOpen size={18} style={{ color: 'var(--color-herb)' }} />
+              <h4 style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>Thư mục gốc quét khóa học</h4>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-4)' }}>
+              Thêm hoặc bớt các thư mục gốc trên Google Drive. Sau khi thay đổi, bấm <strong>Đồng bộ ngay</strong> để cập nhật lại danh sách khóa học cho CTV.
+            </p>
+
+            {loadingRoots ? (
+              <div style={{ padding: 'var(--space-4)' }}>
+                <Loader2 size={20} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--color-herb)' }} />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2" style={{ marginBottom: 'var(--space-4)' }}>
+                {roots.length === 0 ? (
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    Chưa có thư mục gốc nào. Hãy thêm bên dưới.
+                  </div>
+                ) : (
+                  roots.map((r) => (
+                    <div
+                      key={r.id}
+                      className="flex items-center gap-3"
+                      style={{
+                        border: '2px solid var(--border-dark)',
+                        borderRadius: 'var(--border-radius-md)',
+                        padding: '8px 12px',
+                        background: 'var(--color-linen)',
+                      }}
+                    >
+                      <FolderOpen size={16} style={{ color: 'var(--color-herb)', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>{r.name || '(chưa lấy được tên)'}</div>
+                        <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.folderId}
+                        </div>
+                      </div>
+                      <button
+                        className="btn btn-ghost btn-sm btn-icon"
+                        onClick={() => removeRoot(r.id)}
+                        disabled={removingId === r.id}
+                        title="Xóa thư mục gốc"
+                        style={{ color: 'var(--color-coral)', flexShrink: 0 }}
+                      >
+                        {removingId === r.id ? <Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> : <X size={16} />}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            <form onSubmit={addRoot} className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className="form-input"
+                value={newRoot}
+                onChange={(e) => { setNewRoot(e.target.value); setRootError(''); }}
+                placeholder="Dán link Google Drive hoặc ID thư mục..."
+                style={{ flex: 1, minWidth: 220 }}
+              />
+              <button type="submit" className="btn btn-primary" disabled={addingRoot || !newRoot.trim()}>
+                {addingRoot ? <Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Plus size={16} />}
+                Thêm
+              </button>
+            </form>
+
+            {rootError && (
+              <div style={{ marginTop: 'var(--space-3)', background: '#fde8e8', border: '2px solid var(--color-coral)', borderRadius: 'var(--border-radius-md)', padding: 'var(--space-3)', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <AlertTriangle size={18} style={{ color: 'var(--color-coral)', flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontWeight: 600, color: '#6b1c1c', fontSize: 'var(--text-sm)' }}>{rootError}</span>
+              </div>
+            )}
+
+            {saEmail && (
+              <p style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                ⚠️ Nhớ chia sẻ thư mục với Service Account <strong style={{ fontFamily: 'monospace' }}>{saEmail}</strong> ở quyền <strong>Người xem (Viewer)</strong> trước khi thêm.
+              </p>
+            )}
           </div>
         </div>
       </div>

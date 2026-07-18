@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/utils';
 import { loadFullDriveFolderTree } from '@/lib/drive';
+import { getRootFolderIds } from '@/lib/driveRoots';
 import connectDB from '@/lib/mongodb';
 import FolderTree from '@/lib/models/FolderTree';
 
@@ -52,8 +53,17 @@ export async function POST() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Load full 3-level tree from Drive API
-    const fullTree = await loadFullDriveFolderTree();
+    // Root folders are managed in DB (seeded from env on first use).
+    const rootIds = await getRootFolderIds();
+    if (!rootIds || rootIds.length === 0) {
+      return NextResponse.json(
+        { error: 'Chưa cấu hình thư mục gốc nào. Vui lòng thêm thư mục ở mục "Thư mục gốc" trước khi đồng bộ.' },
+        { status: 400 }
+      );
+    }
+
+    // Load full 3-level tree from Drive API for the configured roots
+    const fullTree = await loadFullDriveFolderTree(rootIds);
 
     // Check if all roots failed
     const allFailed = fullTree.length > 0 && fullTree.every(folder => folder.error);

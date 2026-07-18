@@ -49,10 +49,12 @@ async function runDrip(request) {
   await connectDB();
   const now = Date.now();
 
-  // Pending combos still in the campaign (not trial, not paid, not unsubscribed, < 3 touches).
+  // Pending combos still in the campaign: not trial, not paid, NOT already
+  // processed/granted, not unsubscribed, and haven't received all 3 touches.
   const candidates = await Registration.find({
     type: { $ne: 'trial' },
     paymentStatus: 'pending',
+    processed: { $ne: true },
     unsubscribed: { $ne: true },
     dripTouch: { $lt: 3 },
   })

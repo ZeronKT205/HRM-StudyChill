@@ -116,13 +116,15 @@ async function loadFolderTreeRecursive(drive, folderId, currentDepth, maxDepth) 
  * Uses SERVICE ACCOUNT - no user token needed.
  * Recursively loads all 3 levels (Roots -> Subjects -> Teachers).
  */
-export async function loadFullDriveFolderTree() {
+export async function loadFullDriveFolderTree(rootIds) {
   const drive = getServiceAccountDriveClient();
-  
-  const folderIds = [
-    process.env.DRIVE_FOLDER_1,
-    process.env.DRIVE_FOLDER_2,
-  ].filter(Boolean);
+
+  // Use the provided root folder IDs; fall back to env defaults if none given.
+  const folderIds = (
+    Array.isArray(rootIds) && rootIds.length > 0
+      ? rootIds
+      : [process.env.DRIVE_FOLDER_1, process.env.DRIVE_FOLDER_2]
+  ).filter(Boolean);
 
   const allTrees = [];
 
@@ -160,6 +162,38 @@ export async function loadFullDriveFolderTree() {
   }
 
   return allTrees;
+}
+
+/**
+ * Get basic info (id, name, mimeType) of a Drive folder via the service account.
+ * Throws if the folder isn't accessible (e.g. not shared with the service account).
+ */
+export async function getDriveFolderInfo(folderId) {
+  const drive = getServiceAccountDriveClient();
+  const res = await drive.files.get({
+    fileId: folderId,
+    fields: 'id, name, mimeType',
+    supportsAllDrives: true,
+  });
+  return res.data;
+}
+
+/**
+ * Return the service account's email (so admin knows which account to share folders with).
+ */
+export function getServiceAccountEmail() {
+  try {
+    let key;
+    if (process.env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+      key = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+    } else {
+      const p = path.join(process.cwd(), 'service-account-drive.json');
+      key = JSON.parse(readFileSync(p, 'utf8'));
+    }
+    return key.client_email || '';
+  } catch {
+    return '';
+  }
 }
 
 /**
