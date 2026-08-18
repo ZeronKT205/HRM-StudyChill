@@ -4,6 +4,7 @@ import Registration from '@/lib/models/Registration';
 import { extractDesCode, normalizeDes } from '@/lib/payments';
 import { emitPaid } from '@/lib/realtime';
 import { sendRegistrationConfirmedEmail } from '@/lib/email';
+import { autoGrantComboFolders } from '@/lib/autoGrant';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -73,9 +74,12 @@ export async function POST(request) {
       const recent = await Registration.find({ paymentStatus: { $ne: 'paid' } })
         .sort({ createdAt: -1 })
         .limit(200)
-        .select('desCode amount comboName email paymentStatus confirmEmailSent')
-        .exec();
-      reg = recent.find((r) => normContent.includes(normalizeDes(r.desCode))) || null;
+        .select('desCode')
+        .lean();
+      const match = recent.find((r) => normContent.includes(normalizeDes(r.desCode))) || null;
+      // Re-fetch in full: the auto-grant step needs comboId/type/note, and a
+      // partially-selected doc would silently resolve to the wrong combo.
+      if (match) reg = await Registration.findById(match._id);
     }
 
     if (!reg) {
@@ -107,10 +111,16 @@ export async function POST(request) {
     // Push realtime event to the QR page (same-process listeners).
     emitPaid(String(reg._id), { amount });
 
-    // Send the "confirmed" email (best-effort, once).
+    // Auto-grant the combo's Drive folders (if admin mapped this combo), so the
+    // student gets access immediately instead of waiting for manual approval.
+    // Never throws — falls back to the manual flow when it can't grant.
+    const { granted, folders } = await autoGrantComboFolders(reg);
+
+    // Send the "confirmed" email (best-effort, once). When folders were granted this
+    // same email carries the Drive links and acts as the activation email.
     if (!reg.confirmEmailSent) {
       try {
-        await sendRegistrationConfirmedEmail(reg.email, reg.comboName);
+        await sendRegistrationConfirmedEmail(reg.email, reg.comboName, granted ? folders : []);
         reg.confirmEmailSent = true;
         await reg.save();
       } catch (mailErr) {

@@ -20,6 +20,7 @@ import {
   MessageSquare,
   X,
   AlertTriangle,
+  Zap,
 } from 'lucide-react';
 
 const PAYMENT_CONFIG = {
@@ -252,7 +253,13 @@ export default function AdminRegistrationsPage() {
                         <td>
                           <div className="flex items-center gap-2">
                             {r.processed ? (
-                              <span className="badge badge-approved"><CheckCircle2 size={12} /> Đã duyệt</span>
+                              r.approvedBy === 'system:auto' ? (
+                                <span className="badge badge-approved" title="Hệ thống tự cấp quyền ngay khi thanh toán thành công">
+                                  <Zap size={12} /> Tự động
+                                </span>
+                              ) : (
+                                <span className="badge badge-approved"><CheckCircle2 size={12} /> Đã duyệt</span>
+                              )
                             ) : (
                               <button
                                 className="btn btn-sm btn-primary"

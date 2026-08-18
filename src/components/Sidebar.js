@@ -16,6 +16,7 @@ import {
   ChevronRight,
   GraduationCap,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -75,6 +76,7 @@ export default function Sidebar({ isOpen, onClose }) {
         { href: '/dashboard/admin/orders', icon: ClipboardList, label: 'Tất cả đơn hàng' },
         { href: '/dashboard/admin/registrations', icon: GraduationCap, label: 'Đăng ký khóa học', badge: 'registrations' },
         { href: '/dashboard/admin/trials', icon: Sparkles, label: 'Học thử', badge: 'trials' },
+        { href: '/dashboard/admin/combo-folders', icon: Zap, label: 'Tự động cấp quyền' },
         { href: '/dashboard/admin/users', icon: Users, label: 'Quản lý CTV' },
       ],
     });

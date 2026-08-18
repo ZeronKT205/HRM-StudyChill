@@ -138,6 +138,12 @@ export default function NewOrderPage() {
     if (!formData.isError && (!formData.orderValue || Number(formData.orderValue) <= 0)) {
       newErrors.orderValue = 'Vui lòng nhập giá trị đơn hàng';
     }
+    // Bill là bắt buộc cho mọi đơn hàng, kể cả đơn báo lỗi
+    if (uploadingFile) {
+      newErrors.billImage = 'Ảnh bill đang được tải lên, vui lòng đợi trong giây lát';
+    } else if (!formData.billImage) {
+      newErrors.billImage = 'Vui lòng tải lên ảnh bill / biên lai chuyển khoản';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }
@@ -378,7 +384,7 @@ export default function NewOrderPage() {
                             <AlertTriangle size={14} /> Báo lỗi
                           </span>
                           <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', display: 'block', marginTop: 2 }}>
-                            Đơn xử lý lỗi — giá trị đơn sẽ là 0đ, sau khi Admin duyệt sẽ tự chuyển sang &quot;Đã trả hoa hồng&quot;
+                            Đơn xử lý lỗi — giá trị đơn sẽ là 0đ. Đơn này <strong>không tự động chuyển trạng thái</strong>, Admin sẽ xem xét và duyệt thủ công
                           </span>
                         </div>
                       </label>
@@ -389,9 +395,13 @@ export default function NewOrderPage() {
                   <div className="form-group">
                     <label className="form-label">
                       <Image size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />
-                      Tải Lên Ảnh Bill / Biên Lai Chuyển Khoản
+                      Tải Lên Ảnh Bill / Biên Lai Chuyển Khoản <span className="required">*</span>
                     </label>
-                    <label htmlFor="billUpload" className={`file-upload-zone ${billPreview ? 'has-file' : ''} ${uploadingFile ? 'disabled' : ''}`}>
+                    <label
+                      htmlFor="billUpload"
+                      className={`file-upload-zone ${billPreview ? 'has-file' : ''} ${uploadingFile ? 'disabled' : ''}`}
+                      style={errors.billImage ? { borderColor: 'var(--color-coral)', background: '#fff5f5' } : undefined}
+                    >
                       {uploadingFile ? (
                         <div className="flex flex-col items-center justify-center" style={{ padding: '20px 0' }}>
                           <Loader2 size={36} style={{ animation: 'spin 0.8s linear infinite', color: 'var(--color-herb)', margin: '0 auto 10px auto' }} />
@@ -430,6 +440,9 @@ export default function NewOrderPage() {
                       />
                     </label>
                     {errors.billImage && <span className="form-error">{errors.billImage}</span>}
+                    <span className="form-helper">
+                      Bắt buộc với <strong>mọi đơn hàng</strong>, kể cả đơn <strong>Báo lỗi</strong>. Đơn không có bill sẽ không được ghi nhận.
+                    </span>
                   </div>
                 </div>
               </div>

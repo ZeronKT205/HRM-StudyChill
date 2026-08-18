@@ -24,7 +24,7 @@ import {
 
 // External resources shown on the public page.
 const COURSE_SHEET_URL =
-  'https://docs.google.com/spreadsheets/d/1ELtsqjpKLf3ICb116NAe6ACuIIKJmz2R/edit?gid=321020953#gid=321020953';
+  'https://docs.google.com/spreadsheets/d/1J6M_KLrjI2U2o9UbjLHYzq_G8fi96SAR/edit?gid=321020953#gid=321020953';
 const COMMUNITY_LINKS = [
   { label: 'Fanpage', href: 'https://www.facebook.com/Tailieuonthi3107', icon: Megaphone, accent: 'sky' },
   { label: 'Nhóm hỗ trợ', href: 'https://zalo.me/g/vf4uews1xb94fhk8clsm', icon: MessageCircle, accent: 'radiate' },

@@ -85,9 +85,10 @@ export async function PUT(request, { params }) {
         }
       }
 
-      // Flagged orders (commission already deducted / error) skip payout:
-      // once approved, move straight to 'paid' so they don't show up for reconciliation
-      if (body.status === 'approved' && (order.commissionDeducted || order.isError)) {
+      // Orders with commission already deducted skip payout: once approved they move
+      // straight to 'paid' so they don't show up for reconciliation.
+      // Bao loi (error) orders are NEVER auto-advanced — admin must handle them manually.
+      if (body.status === 'approved' && order.commissionDeducted && !order.isError) {
         order.status = 'paid';
       }
     } else {

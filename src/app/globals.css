@@ -367,6 +367,15 @@ input, textarea, select {
   box-shadow: 0 0 0 3px rgba(233, 109, 109, 0.15);
 }
 
+select.form-input {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23767676' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
 .form-textarea {
   padding: var(--space-3) var(--space-4);
   border: 2px solid var(--border-medium);

@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 // Public "view full course" link (Google Sheet). Overridable via env.
 const COURSE_VIEW_URL =
   process.env.COURSE_VIEW_URL ||
-  'https://docs.google.com/spreadsheets/d/1ELtsqjpKLf3ICb116NAe6ACuIIKJmz2R/edit?gid=321020953#gid=321020953';
+  'https://docs.google.com/spreadsheets/d/1J6M_KLrjI2U2o9UbjLHYzq_G8fi96SAR/edit?gid=321020953#gid=321020953';
 
 // Public site base URL, used to build QR / unsubscribe links inside emails.
 // On Vercel, falls back to the deployment URL if APP_BASE_URL isn't set.
@@ -141,22 +141,46 @@ export async function sendRegistrationReceivedEmail(toEmail, comboName) {
 /**
  * Step 2 email — sent after the SePay webhook confirms payment succeeded.
  */
-export async function sendRegistrationConfirmedEmail(toEmail, comboName) {
-  const mailOptions = {
-    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
-    to: toEmail,
-    subject: '[STUDYCHILL] Xác nhận đăng ký khóa học thành công 🎉',
-    html: emailShell(`
-      <p>Xin chào <strong>${toEmail}</strong>,</p>
-      <p>Xác nhận đăng ký khóa học tại <strong>STUDYCHILL</strong> thành công! 🎉</p>
-      ${comboName ? `<div style="background-color: #ffffff; padding: 15px; border: 2px solid #d4ceb8; border-radius: 8px; margin: 20px 0;">
+export async function sendRegistrationConfirmedEmail(toEmail, comboName, selectedFolders = []) {
+  // When the combo is mapped to Drive folders, access is granted the instant payment
+  // lands — so this email doubles as the activation email and carries the links.
+  const activated = Array.isArray(selectedFolders) && selectedFolders.length > 0;
+
+  const comboBlock = comboName
+    ? `<div style="background-color: #ffffff; padding: 15px; border: 2px solid #d4ceb8; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 0; color: #5a6340; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; font-weight: 700;">Gói đã đăng ký</p>
         <p style="margin: 6px 0 0 0; font-weight: 700; color: #6a8042;">${comboName}</p>
-      </div>` : ''}
+      </div>`
+    : '';
+
+  const body = activated
+    ? `
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>Xác nhận đăng ký khóa học tại <strong>STUDYCHILL</strong> thành công! 🎉</p>
+      ${comboBlock}
+      <p>Khóa học của bạn đã được <strong>kích hoạt ngay</strong>. Bấm vào các liên kết Google Drive dưới đây để vào học:</p>
+      ${foldersLinksHtml(selectedFolders)}
+      ${emailButton(COURSE_VIEW_URL, '👉 VÀO HỌC NGAY')}
+      <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
+        <strong>Lưu ý quan trọng:</strong> Vui lòng đăng nhập Google Drive bằng chính địa chỉ email <strong>${toEmail}</strong> để truy cập các thư mục trên. Nếu gặp khó khăn, hãy liên hệ đội ngũ STUDYCHILL để được hỗ trợ.
+      </div>
+    `
+    : `
+      <p>Xin chào <strong>${toEmail}</strong>,</p>
+      <p>Xác nhận đăng ký khóa học tại <strong>STUDYCHILL</strong> thành công! 🎉</p>
+      ${comboBlock}
       <div style="background-color: #fffadd; border-left: 4px solid #ed7a13; padding: 12px; margin: 20px 0; font-size: 14px; color: #5a6340;">
         Vui lòng chờ team duyệt và cấp quyền vào khóa học trong tối đa <strong>1 giờ</strong>. Chúng tôi sẽ gửi email khi khóa học được kích hoạt.
       </div>
-    `),
+    `;
+
+  const mailOptions = {
+    from: `"STUDYCHILL" <${process.env.SMTP_USER || 'tailieusv.desstar1@gmail.com'}>`,
+    to: toEmail,
+    subject: activated
+      ? '[STUDYCHILL] Đăng ký thành công — Khóa học đã kích hoạt 🎉'
+      : '[STUDYCHILL] Xác nhận đăng ký khóa học thành công 🎉',
+    html: emailShell(body),
   };
   return transporter.sendMail(mailOptions);
 }
